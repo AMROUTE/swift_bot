@@ -1,0 +1,9 @@
+[
+  {
+    "id": "8c30e4de-4f4a-4107-b478-ecc068a7a3c2",
+    "name": "README.md",
+    "size": 1026,
+    "text": "# swift_bot\n\nThis template should help get you started developing with Vue 3 in Vite.\n\n## Recommended IDE Setup\n\n[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).\n\n## Recommended Browser Setup\n\n- Chromium-based browsers (Chrome, Edge, Brave, etc.):\n - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)\n - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)\n- Firefox:\n - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)\n - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)\n\n## Customize configuration\n\nSee [Vite Configuration Reference](https://vite.dev/config/).\n\n## Project Setup\n\n```sh\nnpm install\n```\n\n### Compile and Hot-Reload for Development\n\n```sh\nnpm run dev\n```\n\n### Compile and Minify for Production\n\n```sh\nnpm run build\n```",
+    "created_at": "2026-05-17T15:12:21.863258+00:00"
+  }
+]
