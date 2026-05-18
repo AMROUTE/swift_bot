@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
-const API_BASE = 'http://127.0.0.1:8000'
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 
 const sampleDocs = [
   {
@@ -51,7 +51,8 @@ async function apiFetch(path, options = {}) {
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(payload.error || `HTTP ${response.status}`)
+    const detail = typeof payload.detail === 'string' ? payload.detail : JSON.stringify(payload.detail)
+    throw new Error(payload.error || detail || `HTTP ${response.status}`)
   }
 
   return payload
@@ -147,9 +148,7 @@ async function clearKnowledgeBase() {
   isLoading.value = true
 
   try {
-    for (const doc of documents.value) {
-      await apiFetch(`/documents?id=${encodeURIComponent(doc.id)}`, { method: 'DELETE' })
-    }
+    await apiFetch('/documents/all', { method: 'DELETE' })
     messages.value = []
     activeSource.value = null
     await refreshDocuments()

@@ -1,31 +1,40 @@
 # Swift Bot RAG Backend
 
-Zero-dependency local backend for the first RAG MVP.
+FastAPI backend for the local RAG MVP. It stores documents and chunks in Postgres with pgvector enabled, while the MVP retrieval path still uses lightweight keyword/TF-IDF scoring.
 
-## Run
+## Setup
 
-Install dependencies:
+Install Python dependencies:
 
 ```sh
 Backend/.venv/bin/python -m pip install -r Backend/requirements.txt
 ```
 
-Current MVP backend uses only Python standard library modules, so this is a no-op for now.
+Copy environment defaults if needed:
 
 ```sh
-Backend/.venv/bin/python Backend/app.py
+cp .env.example .env
+```
+
+Start Postgres + pgvector:
+
+```sh
+docker compose up -d postgres
+```
+
+The container is exposed on host port `55432` to avoid conflicts with any local Postgres already using `5432`.
+
+Run the API:
+
+```sh
+cd Backend
+.venv/bin/uvicorn swift_rag.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Server starts at:
 
 ```txt
 http://127.0.0.1:8000
-```
-
-If `8000` is busy:
-
-```sh
-RAG_PORT=8001 Backend/.venv/bin/python Backend/app.py
 ```
 
 ## API
@@ -57,6 +66,8 @@ Supported MVP formats:
 - `.json`
 - `.log`
 
+Single-file upload limit defaults to 5 MB.
+
 ### Ask
 
 ```sh
@@ -66,16 +77,25 @@ curl \
   http://127.0.0.1:8000/ask
 ```
 
-### Delete document
+### Delete one document
 
 ```sh
 curl -X DELETE "http://127.0.0.1:8000/documents?id=<document_id>"
 ```
 
+### Delete all documents
+
+```sh
+curl -X DELETE http://127.0.0.1:8000/documents/all
+```
+
+## Tests
+
+```sh
+cd Backend
+.venv/bin/python -m pytest
+```
+
 ## Storage
 
-Documents persist to:
-
-```txt
-Backend/data/documents.json
-```
+The old JSON store at `Backend/data/documents.json` is retained as a backup only. The new backend reads and writes Postgres.

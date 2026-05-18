@@ -1,2 +1,7 @@
-# Current MVP backend uses only Python standard library modules.
-# Keep this file so deployment scripts have a stable dependency entrypoint.
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+SQLAlchemy==2.0.36
+psycopg[binary]==3.2.13
+python-multipart==0.0.20
+pytest==8.3.4
+httpx==0.27.2
