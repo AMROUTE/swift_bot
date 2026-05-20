@@ -19,7 +19,7 @@ Professional AI knowledge-base Chatbot dashboard for Swift Bot. The page is an a
 5. **Responsive Behavior:** Desktop uses three columns. Medium width uses left + center with source panel below. Mobile stacks panels vertically with full-width controls and compact typography.
 
 **CONTENT DETAILS:**
-- Use Chinese UI labels: "上传或拖入文档", "知识源", "清空", "检索回答", "引用片段".
+- Use Chinese UI labels: "上传或拖入文档", "文档", "清空", "检索回答", "引用片段".
 - Example document names: `AI知识库MVP方案.md`, `RAG运行手册.txt`, `README.md`.
 - Example answer includes numbered citations like `[1]`, `[2]`.
 
