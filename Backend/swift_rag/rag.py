@@ -5,10 +5,11 @@ import re
 import uuid
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
 
-from .config import ALLOWED_EXTENSIONS, CHUNK_OVERLAP, CHUNK_SIZE, MAX_UPLOAD_BYTES, TOP_K
+from .config import ALLOWED_EXTENSIONS, CHUNK_OVERLAP, CHUNK_SIZE, MAX_UPLOAD_BYTES, RETRIEVAL_MODE, TOP_K
+from .embeddings import embed_texts, embeddings_configured, vector_literal
 from .models import Chunk, Document, utc_now
 
 
@@ -147,6 +148,13 @@ def create_document(session: Session, filename: str, raw: bytes) -> Document:
     document.chunks = [Chunk(**payload) for payload in make_chunk_payloads(document_id, text)]
     session.add(document)
     session.flush()
+    if embeddings_configured() and document.chunks:
+        embeddings = embed_texts([chunk.text for chunk in document.chunks])
+        for chunk, embedding in zip(document.chunks, embeddings):
+            session.execute(
+                text("UPDATE chunks SET embedding = CAST(:embedding AS vector) WHERE id = :chunk_id"),
+                {"embedding": vector_literal(embedding), "chunk_id": chunk.id},
+            )
     return document
 
 
@@ -164,6 +172,19 @@ def delete_all_documents(session: Session) -> int:
     for document in documents:
         session.delete(document)
     return total
+
+
+def reindex_embeddings(session: Session) -> int:
+    chunks = session.execute(select(Chunk).order_by(Chunk.document_id, Chunk.index)).scalars().all()
+    if not chunks:
+        return 0
+    embeddings = embed_texts([chunk.text for chunk in chunks])
+    for chunk, embedding in zip(chunks, embeddings):
+        session.execute(
+            text("UPDATE chunks SET embedding = CAST(:embedding AS vector) WHERE id = :chunk_id"),
+            {"embedding": vector_literal(embedding), "chunk_id": chunk.id},
+        )
+    return len(chunks)
 
 
 def score_chunk(chunk: Chunk, query_terms: list[str], chunks: list[Chunk]) -> float:
@@ -191,7 +212,7 @@ def score_chunk(chunk: Chunk, query_terms: list[str], chunks: list[Chunk]) -> fl
     return score + overlap / math.sqrt(len(unique_chunk_terms) or 1)
 
 
-def retrieve(session: Session, question: str) -> list[dict]:
+def retrieve_keyword(session: Session, question: str) -> list[dict]:
     chunks = (
         session.execute(
             select(Chunk)
@@ -217,6 +238,49 @@ def retrieve(session: Session, question: str) -> list[dict]:
     return sorted([chunk for chunk in scored if chunk["score"] > 0], key=lambda item: item["score"], reverse=True)[
         :TOP_K
     ]
+
+
+def retrieve_vector(session: Session, question: str) -> list[dict]:
+    query_embedding = embed_texts([question])[0]
+    rows = session.execute(
+        text(
+            """
+            SELECT
+              c.id,
+              c.document_id AS doc_id,
+              d.name AS source,
+              c.chunk_index AS index,
+              c.text,
+              1 - (c.embedding <=> CAST(:embedding AS vector)) AS score
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            WHERE c.embedding IS NOT NULL
+            ORDER BY c.embedding <=> CAST(:embedding AS vector)
+            LIMIT :top_k
+            """
+        ),
+        {"embedding": vector_literal(query_embedding), "top_k": TOP_K},
+    ).all()
+    return [
+        {
+            "id": row._mapping["id"],
+            "doc_id": row._mapping["doc_id"],
+            "source": row._mapping["source"],
+            "index": row._mapping["index"],
+            "text": row._mapping["text"],
+            "terms": [],
+            "score": float(row._mapping["score"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def retrieve(session: Session, question: str) -> list[dict]:
+    if RETRIEVAL_MODE in {"vector", "hybrid"} and embeddings_configured():
+        vector_sources = retrieve_vector(session, question)
+        if vector_sources or RETRIEVAL_MODE == "vector":
+            return vector_sources
+    return retrieve_keyword(session, question)
 
 
 def build_answer(question: str, sources: list[dict]) -> dict:

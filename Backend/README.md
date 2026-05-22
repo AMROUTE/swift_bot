@@ -1,6 +1,6 @@
 # Swift Bot RAG Backend
 
-FastAPI backend for the local RAG MVP. It stores documents and chunks in Postgres with pgvector enabled, while the MVP retrieval path still uses lightweight keyword/TF-IDF scoring.
+FastAPI backend for the local RAG MVP. It stores documents and chunks in Postgres with pgvector enabled. Retrieval runs in `hybrid` mode by default: OpenAI embeddings + pgvector when `OPENAI_API_KEY` is configured, then keyword/TF-IDF as the local fallback.
 
 ## Setup
 
@@ -14,6 +14,15 @@ Copy environment defaults if needed:
 
 ```sh
 cp .env.example .env
+```
+
+To enable vector retrieval, set an OpenAI API key before starting the API:
+
+```sh
+export OPENAI_API_KEY="<your_api_key>"
+export EMBEDDING_MODEL="text-embedding-3-small"
+export EMBEDDING_DIMENSIONS="1536"
+export RETRIEVAL_MODE="hybrid"
 ```
 
 Start Postgres + pgvector:
@@ -76,6 +85,16 @@ curl \
   -d '{"question":"这个知识库 MVP 应该先做哪些功能？"}' \
   http://127.0.0.1:8000/ask
 ```
+
+### Rebuild embeddings for existing chunks
+
+Use this after adding `OPENAI_API_KEY` to an existing local database that already has uploaded documents:
+
+```sh
+curl -X POST http://127.0.0.1:8000/embeddings/reindex
+```
+
+New uploads are embedded automatically when `OPENAI_API_KEY` is configured. Without a key, uploads still work and `/ask` falls back to keyword retrieval.
 
 ### Delete one document
 

@@ -51,7 +51,11 @@ const backendStatus = computed(() => {
 const retrievalSummary = computed(() => [
   { label: 'Top K', value: 5 },
   { label: '格式', value: 'Text' },
-  { label: '模式', value: 'TF-IDF' },
+  { label: '模式', value: backendHealth.value.retrieval?.mode ?? 'hybrid' },
+  {
+    label: '向量',
+    value: backendHealth.value.retrieval?.embeddings_configured ? 'OpenAI' : '未配置',
+  },
 ])
 const quickPrompts = [
   '这个知识库 MVP 应该先做哪些功能？',

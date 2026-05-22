@@ -1,4 +1,5 @@
 from swift_rag.models import Chunk
+from swift_rag.embeddings import vector_literal
 from swift_rag.rag import build_answer, make_chunk_payloads, normalize_text, retrieve, tokenize
 
 
@@ -47,3 +48,7 @@ def test_build_answer_with_citations():
 
     assert "[1]" in answer["answer"]
     assert answer["citations"][0]["score"] == 2.3457
+
+
+def test_vector_literal_formats_pgvector_input():
+    assert vector_literal([0.1, -0.2, 3.0]) == "[0.1,-0.2,3.0]"

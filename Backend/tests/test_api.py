@@ -12,6 +12,8 @@ def test_health(client, monkeypatch):
     assert response.status_code == 200
     assert response.json()["ok"] is True
     assert response.json()["database"]["ok"] is True
+    assert response.json()["retrieval"]["mode"]
+    assert "embeddings_configured" in response.json()["retrieval"]
 
 
 def test_health_reports_database_down(client, monkeypatch):
@@ -91,3 +93,12 @@ def test_delete_all(client):
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] == 2
     assert client.get("/documents").json()["stats"]["documents"] == 0
+
+
+def test_reindex_requires_openai_key(client, monkeypatch):
+    monkeypatch.setattr(main_module, "embeddings_configured", lambda: False)
+
+    response = client.post("/embeddings/reindex")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "OPENAI_API_KEY is required for embeddings"

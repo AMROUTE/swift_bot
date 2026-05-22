@@ -12,7 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from swift_rag.database import Base, get_session
 from swift_rag.main import app
+import swift_rag.main as main_module
+import swift_rag.rag as rag_module
 from swift_rag.rag import create_document
+
+
+@pytest.fixture(autouse=True)
+def disable_embeddings(monkeypatch):
+    monkeypatch.setattr(main_module, "embeddings_configured", lambda: False)
+    monkeypatch.setattr(rag_module, "embeddings_configured", lambda: False)
 
 
 @pytest.fixture()

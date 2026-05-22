@@ -6,11 +6,14 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from openai import OpenAIError
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, RETRIEVAL_MODE
 from .database import check_database, get_session
+from .embeddings import embeddings_configured
 from .rag import (
     build_answer,
     create_document,
@@ -18,6 +21,7 @@ from .rag import (
     delete_document,
     document_summary,
     list_documents,
+    reindex_embeddings,
     retrieve,
     validate_upload,
 )
@@ -49,6 +53,17 @@ def database_error_handler(request: Request, error: SQLAlchemyError) -> JSONResp
     )
 
 
+@app.exception_handler(OpenAIError)
+def openai_error_handler(request: Request, error: OpenAIError) -> JSONResponse:
+    return JSONResponse(
+        status_code=502,
+        content={
+            "error": "embeddings unavailable",
+            "detail": "OpenAI embeddings request failed. Check OPENAI_API_KEY, network, and account limits.",
+        },
+    )
+
+
 @app.get("/health")
 def health() -> dict:
     database_ok, database_error = check_database()
@@ -60,6 +75,12 @@ def health() -> dict:
         "database": {
             "ok": database_ok,
             "error": database_error,
+        },
+        "retrieval": {
+            "mode": RETRIEVAL_MODE,
+            "embeddings_configured": embeddings_configured(),
+            "embedding_model": EMBEDDING_MODEL,
+            "embedding_dimensions": EMBEDDING_DIMENSIONS,
         },
     }
 
@@ -108,6 +129,16 @@ def delete_documents(id: str, session: Session = Depends(get_session)) -> dict:
     deleted = delete_document(session, id)
     session.commit()
     return {"deleted": deleted, "id": id}
+
+
+@app.post("/embeddings/reindex")
+def post_embeddings_reindex(session: Session = Depends(get_session)) -> dict:
+    if not embeddings_configured():
+        raise HTTPException(status_code=400, detail="OPENAI_API_KEY is required for embeddings")
+
+    updated = reindex_embeddings(session)
+    session.commit()
+    return {"updated_chunks": updated}
 
 
 @app.post("/ask")
